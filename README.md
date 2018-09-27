@@ -51,8 +51,17 @@
 }
 ```
 
+Доступные поля можно смотреть тут https://github.com/alexesDev/cas/blob/master/pkg/cas/main.go#L29
+
 Пример запуска:
 ```bash
 go get github.com/alexesDev/cas/cmd/cascli
 cascli example_task.json
+```
+
+Или в Docker:
+```bash
+docker run --rm -it \
+  -v $(pwd)/example_task.json:/task.json cascli /task.json
+  alexes/cas cli /task.json
 ```
