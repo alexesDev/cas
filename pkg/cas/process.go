@@ -5,45 +5,47 @@ import (
 	"log"
 )
 
-type Step struct {
+// Step is
+type step struct {
 	Type  string
 	Input json.RawMessage
 }
 
-type StepAnswer struct {
+type stepAnswer struct {
 	Type   string
 	Error  string
 	Output json.RawMessage
 }
 
-type Task struct {
+type task struct {
 	Addr string
-	Plan []Step
+	Plan []step
 }
 
-type UploadPLUInput struct {
-	ScaleId   uint32
+type uploadPLUInput struct {
+	ScaleID   uint32
 	PLUNumber uint32
 }
 
-type DownloadPLUInput struct {
-	ScaleId uint32
+type downloadPLUInput struct {
+	ScaleID uint32
 	Data    PLUData
 }
 
-type ErasePLUInput struct {
-	ScaleId          uint32
+type erasePLUInput struct {
+	ScaleID          uint32
 	DepartmentNumber uint16
 	PLUNumber        uint32
 }
 
-type TaskAnswer struct {
-	Plan []StepAnswer
+type taskAnswer struct {
+	Plan []stepAnswer
 }
 
+// ProcessJSON starts execution of the steps described in JSON
 func ProcessJSON(buf []byte) ([]byte, error) {
-	var task Task
-	var answer TaskAnswer
+	var task task
+	var answer taskAnswer
 
 	if err := json.Unmarshal(buf, &task); err != nil {
 		return nil, err
@@ -56,33 +58,39 @@ func ProcessJSON(buf []byte) ([]byte, error) {
 	}
 
 	for _, step := range task.Plan {
-		var as StepAnswer
+		var as stepAnswer
 		as.Type = step.Type
 
 		switch step.Type {
 		case "DownloadPLU":
-			var input DownloadPLUInput
+			var input downloadPLUInput
 
 			if err := json.Unmarshal(step.Input, &input); err != nil {
 				as.Error = err.Error()
 				goto End
 			}
 
-			err = scale.DownloadPLU(input.ScaleId, input.Data)
+			err = scale.DownloadPLU(input.ScaleID, input.Data)
 
 			if err != nil {
 				as.Error = err.Error()
 				goto End
 			}
 		case "UploadPLU":
-			var input UploadPLUInput
+			var input uploadPLUInput
 
 			if err := json.Unmarshal(step.Input, &input); err != nil {
 				as.Error = err.Error()
 				goto End
 			}
 
-			data := scale.UploadPLU(input.ScaleId, input.PLUNumber)
+			data, err := scale.UploadPLU(input.ScaleID, input.PLUNumber)
+
+			if err != nil {
+				as.Error = err.Error()
+				goto End
+			}
+
 			b, err := json.Marshal(data)
 
 			if err != nil {
@@ -92,14 +100,14 @@ func ProcessJSON(buf []byte) ([]byte, error) {
 
 			as.Output = b
 		case "ErasePLU":
-			var input ErasePLUInput
+			var input erasePLUInput
 
 			if err := json.Unmarshal(step.Input, &input); err != nil {
 				as.Error = err.Error()
 				goto End
 			}
 
-			err = scale.ErasePLU(input.ScaleId, input.DepartmentNumber, input.PLUNumber)
+			err = scale.ErasePLU(input.ScaleID, input.DepartmentNumber, input.PLUNumber)
 
 			if err != nil {
 				as.Error = err.Error()

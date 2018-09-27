@@ -3,17 +3,18 @@ package cas
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"net"
+	"time"
 )
 
+// Cas lib context
 type Cas struct {
 	conn net.Conn
 }
 
 func checksum(data []byte) byte {
-	var sum byte = 0
+	var sum byte
 
 	for _, v := range data {
 		sum += v
@@ -22,10 +23,16 @@ func checksum(data []byte) byte {
 	return sum
 }
 
+// PLUName1String is a special type of Name1
 type PLUName1String [40]byte
+
+// PLUName2String is a special type of Name2
 type PLUName2String [40]byte
+
+// PLUName3String is a special type of Name3
 type PLUName3String [5]byte
 
+// PLUData contains all product info
 type PLUData struct {
 	DepartmentNumber       uint16         // 0
 	PLUNumber              uint32         // 2
@@ -77,75 +84,106 @@ func encodePacket(address uint32, opcode [2]byte, data []byte) []byte {
 	return buf
 }
 
-func (c Cas) UploadPLU(scaleId uint32, number uint32) PLUData {
+// UploadPLU requests data from scale
+func (c Cas) UploadPLU(scaleID uint32, number uint32) (PLUData, error) {
+	var data PLUData
+	var err error
+	var tmp []byte
+
 	opcode := [2]byte{'R', 'L'}
 
 	plu := make([]byte, 4)
 	binary.LittleEndian.PutUint32(plu, number)
-	buf := encodePacket(scaleId, opcode, plu)
+	buf := encodePacket(scaleID, opcode, plu)
 
-	c.conn.Write(buf)
+	if _, err = c.conn.Write(buf); err != nil {
+		goto End
+	}
 
-	tmp := make([]byte, 512)
-	c.conn.Read(tmp)
+	tmp = make([]byte, 512)
+
+	if _, err = c.conn.Read(tmp); err != nil {
+		goto End
+	}
 
 	if tmp[0] != 'W' {
-		fmt.Println("error")
+		return data, fmt.Errorf("get %#x opcode[0]", tmp[0])
 	}
 
 	if tmp[1] != opcode[1] {
-		fmt.Println("error")
+		return data, fmt.Errorf("get %#x opcode[1]", tmp[1])
 	}
 
-	var data PLUData
-	// 10 header + 4 room number or 4 DeptPLU
-	binary.Read(bytes.NewReader(tmp[14:]), binary.LittleEndian, &data)
+	// TODO: checksum
 
-	return data
+	// 10 header + 4 room number or 4 DeptPLU
+	if err = binary.Read(bytes.NewReader(tmp[14:]), binary.LittleEndian, &data); err != nil {
+		goto End
+	}
+
+End:
+	return data, nil
 }
 
-func (c Cas) DownloadPLU(scaleId uint32, data PLUData) error {
+// DownloadPLU send PLUData to scale
+func (c Cas) DownloadPLU(scaleID uint32, data PLUData) error {
 	opcode := [2]byte{'W', 'L'}
 	var dataBuf bytes.Buffer
-	binary.Write(&dataBuf, binary.LittleEndian, data)
-	buf := encodePacket(scaleId, opcode, dataBuf.Bytes())
 
-	c.conn.Write(buf)
+	if err := binary.Write(&dataBuf, binary.LittleEndian, data); err != nil {
+		return err
+	}
+
+	buf := encodePacket(scaleID, opcode, dataBuf.Bytes())
+
+	if _, err := c.conn.Write(buf); err != nil {
+		return err
+	}
 
 	tmp := make([]byte, 512)
-	c.conn.Read(tmp)
+
+	if _, err := c.conn.Read(tmp); err != nil {
+		return err
+	}
 
 	if tmp[0] != 'G' || tmp[1] != opcode[1] {
-		return errors.New(fmt.Sprintf("DownloadPLU %s %x", string(tmp[0:2]), tmp))
+		return fmt.Errorf("DownloadPLU %s %x", string(tmp[0:2]), tmp)
 	}
 
 	return nil
 }
 
-func (c Cas) ErasePLU(scaleId uint32, departmentNumber uint16, PLUNumber uint32) error {
+// ErasePLU delete one PLU or all if departmentNumber = 0 and PLUNumber = 0
+func (c Cas) ErasePLU(scaleID uint32, departmentNumber uint16, PLUNumber uint32) error {
 	opcode := [2]byte{'W', 'L'}
 	plu := make([]byte, 6)
 	binary.LittleEndian.PutUint16(plu, departmentNumber)
 	binary.LittleEndian.PutUint32(plu[2:], PLUNumber)
-	buf := encodePacket(scaleId, opcode, plu)
+	buf := encodePacket(scaleID, opcode, plu)
 
-	c.conn.Write(buf)
+	if _, err := c.conn.Write(buf); err != nil {
+		return err
+	}
 
 	tmp := make([]byte, 512)
-	c.conn.Read(tmp)
+
+	if _, err := c.conn.Read(tmp); err != nil {
+		return err
+	}
 
 	if tmp[0] != 'G' || tmp[1] != opcode[1] {
-		return errors.New(fmt.Sprintf("ErasePLU %s %x", string(tmp[0:2]), tmp))
+		return fmt.Errorf("ErasePLU %s %x", string(tmp[0:2]), tmp)
 	}
 
 	return nil
 }
 
+// Connect to scale
 func Connect(addr string) (Cas, error) {
 	var cas Cas
 	var err error
 
-	cas.conn, err = net.Dial("tcp", addr)
+	cas.conn, err = net.DialTimeout("tcp", addr, 5*time.Second)
 
 	if err != nil {
 		return cas, err

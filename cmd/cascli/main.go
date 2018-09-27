@@ -20,5 +20,7 @@ func main() {
 		panic(err)
 	}
 
-	os.Stdout.Write(output)
+	if _, err := os.Stdout.Write(output); err != nil {
+		panic(err)
+	}
 }
