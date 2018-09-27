@@ -7,15 +7,15 @@
 риск. Из фишек, которые постараюсь реализовать в свободное время:
 
  - [ ] обработку всех ошибок
- - [ ] web-server, который принимает JSON с массовом заданиями
+ - [x] web-server, который принимает JSON с массовом заданиями
  - [x] cli, который принимает JSON с массовом заданиями
  - [ ] тесты
  - [ ] добавить exe для Windows
 
-## cascli
+## casserver
 
-Утилита, выполняющее JSON задание следующего вида:
-
+HTTP сервер, который принимает `POST /` запрос с JSON телом следующего
+вида:
 ```json
 {
   "Addr": "192.168.88.250:20000",
@@ -51,8 +51,29 @@
   }]
 }
 ```
-
 Доступные поля можно смотреть тут https://github.com/alexesDev/cas/blob/master/pkg/cas/main.go#L29
+
+Пример запуска:
+```bash
+go get github.com/alexesDev/cas/cmd/casserver
+casserver
+```
+
+Или в Docker:
+```bash
+docker run --rm -it \
+  -p 2000:2000
+  alexes/cas server
+```
+
+Пример запроса с `curl`:
+```bash
+curl --data @example_task.json localhost:2000
+```
+
+## cascli
+
+Утилита, выполняющее JSON задание аналогично HTTP-серверу.
 
 Пример запуска:
 ```bash

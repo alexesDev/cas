@@ -2,7 +2,8 @@ FROM golang:1.10.3
 WORKDIR /go/src/github.com/alexesDev/cas
 COPY . .
 RUN cd cmd/cascli && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /cli .
+RUN cd cmd/casserver && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /server .
 
 FROM scratch
 ENV PATH=/
-COPY --from=0 /cli /
+COPY --from=0 /cli /server /
