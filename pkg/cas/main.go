@@ -191,3 +191,12 @@ func Connect(addr string) (Cas, error) {
 
 	return cas, nil
 }
+
+// Close connection
+func (c Cas) Disconnect() error {
+	if c.conn != nil {
+		return c.conn.Close()
+	}
+
+	return nil
+}

@@ -52,6 +52,7 @@ func ProcessJSON(buf []byte) ([]byte, error) {
 	}
 
 	scale, err := Connect(task.Addr)
+	defer scale.Disconnect()
 
 	if err != nil {
 		return nil, err
