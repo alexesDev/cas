@@ -1,0 +1,7 @@
+#!/bin/sh
+
+kubeless function deploy cas \
+  --runtime go1.10 \
+  --dependencies Gopkg.toml \
+  --handler handler.Handler \
+  --from-file handler.go
