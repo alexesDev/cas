@@ -1,13 +1,15 @@
-package main
+package cas
 
 import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
 	"net"
-
-	"golang.org/x/text/encoding/charmap"
 )
+
+type Cas struct {
+	conn net.Conn
+}
 
 func checksum(data []byte) byte {
 	var sum byte = 0
@@ -70,17 +72,17 @@ func encodePacket(address uint32, opcode [2]byte, data []byte) []byte {
 	return buf
 }
 
-func uploadPLU(conn net.Conn, scaleId uint32, number uint32) PLUData {
+func (c Cas) UploadPLU(scaleId uint32, number uint32) PLUData {
 	opcode := [2]byte{'R', 'L'}
 
 	plu := make([]byte, 4)
 	binary.LittleEndian.PutUint32(plu, number)
 	buf := encodePacket(0, opcode, plu)
 
-	conn.Write(buf)
+	c.conn.Write(buf)
 
 	tmp := make([]byte, 512)
-	conn.Read(tmp)
+	c.conn.Read(tmp)
 
 	if tmp[0] != 'W' {
 		fmt.Println("error")
@@ -96,16 +98,16 @@ func uploadPLU(conn net.Conn, scaleId uint32, number uint32) PLUData {
 	return data
 }
 
-func downloadPLU(conn net.Conn, scaleId uint32, data PLUData) {
+func (c Cas) DownloadPLU(scaleId uint32, data PLUData) {
 	opcode := [2]byte{'W', 'L'}
 	var dataBuf bytes.Buffer
 	binary.Write(&dataBuf, binary.LittleEndian, data)
 	buf := encodePacket(0, opcode, dataBuf.Bytes())
 
-	conn.Write(buf)
+	c.conn.Write(buf)
 
 	tmp := make([]byte, 512)
-	conn.Read(tmp)
+	c.conn.Read(tmp)
 
 	if tmp[0] != 'G' {
 		fmt.Printf("error %s %x\n", string(tmp[0:2]), tmp)
@@ -116,17 +118,17 @@ func downloadPLU(conn net.Conn, scaleId uint32, data PLUData) {
 	}
 }
 
-func erasePLU(conn net.Conn, departmentNumber uint16, PLUNumber uint32) {
+func (c Cas) ErasePLU(departmentNumber uint16, PLUNumber uint32) {
 	opcode := [2]byte{'W', 'L'}
 	plu := make([]byte, 6)
 	binary.LittleEndian.PutUint16(plu, departmentNumber)
 	binary.LittleEndian.PutUint32(plu[2:], PLUNumber)
 	buf := encodePacket(0, opcode, plu)
 
-	conn.Write(buf)
+	c.conn.Write(buf)
 
 	tmp := make([]byte, 512)
-	conn.Read(tmp)
+	c.conn.Read(tmp)
 
 	if tmp[0] != 'G' {
 		fmt.Printf("error %s %x\n", string(tmp[0:2]), tmp)
@@ -137,26 +139,15 @@ func erasePLU(conn net.Conn, departmentNumber uint16, PLUNumber uint32) {
 	}
 }
 
-func main() {
-	conn, _ := net.Dial("tcp", "192.168.89.231:20304")
+func Connect(addr string) (Cas, error) {
+	var cas Cas
+	var err error
 
-	// erasePLU(conn, 0, 0)
+	cas.conn, err = net.Dial("tcp", "192.168.88.250:20000")
 
-	for i := 10; i >= 0; i -= 1 {
-		name, _ := charmap.Windows1251.NewEncoder().String(fmt.Sprintf("button %d", i))
-		var data PLUData
-		copy(data.PLUName1[:], name)
-		data.DepartmentNumber = 1
-		data.PLUNumber = uint32(i)
-		data.PLUType = 1
-		downloadPLU(conn, 0, data)
+	if err != nil {
+		return cas, err
 	}
 
-	dec := charmap.Windows1251.NewDecoder()
-
-	for i := 1; i < 10; i += 1 {
-		data := uploadPLU(conn, 0, uint32(i))
-		out, _ := dec.Bytes(data.PLUName1[0:])
-		fmt.Printf("%d %s %d %+v \n", i, string(out), data.PLUNumber, data)
-	}
+	return cas, nil
 }
