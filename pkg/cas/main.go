@@ -145,7 +145,7 @@ func Connect(addr string) (Cas, error) {
 	var cas Cas
 	var err error
 
-	cas.conn, err = net.Dial("tcp", "192.168.88.250:20000")
+	cas.conn, err = net.Dial("tcp", addr)
 
 	if err != nil {
 		return cas, err
