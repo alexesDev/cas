@@ -29,5 +29,10 @@
       "ScaleId": 0,
       "PLUNumber": 2
     }
+  }, {
+    "Type": "GetStatus",
+    "Input": {
+      "ScaleId": 0
+    }
   }]
 }

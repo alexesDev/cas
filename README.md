@@ -87,3 +87,7 @@ docker run --rm -it \
   -v $(pwd)/example_task.json:/task.json cascli /task.json
   alexes/cas cli /task.json
 ```
+
+## GetStatus
+
+На CAS CL3000 возвращает нули, нужно проверить на остальных.

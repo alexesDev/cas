@@ -38,6 +38,10 @@ type erasePLUInput struct {
 	PLUNumber        uint32
 }
 
+type getStatusInput struct {
+	ScaleID uint32
+}
+
 type taskAnswer struct {
 	Plan []stepAnswer
 }
@@ -113,6 +117,28 @@ func ProcessJSON(buf []byte) ([]byte, error) {
 			if err != nil {
 				as.Error = err.Error()
 			}
+		case "GetStatus":
+			var input getStatusInput
+
+			if err := json.Unmarshal(step.Input, &input); err != nil {
+				as.Error = err.Error()
+				goto End
+			}
+
+			status, err := scale.GetStatus(input.ScaleID)
+
+			if err != nil {
+				as.Error = err.Error()
+			}
+
+			b, err := json.Marshal(status)
+
+			if err != nil {
+				as.Error = err.Error()
+				goto End
+			}
+
+			as.Output = b
 		default:
 			log.Fatalf("unknown step type: %q", step.Type)
 		}

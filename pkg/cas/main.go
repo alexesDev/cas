@@ -67,6 +67,24 @@ type PLUData struct {
 	SaleMessageNumber      uint8          // 146
 }
 
+// Status Protocol Structure
+type Status struct {
+	LoadFlag           uint8 // 0: Zero 1: Non zero 2: Overload
+	StableFlag         uint8 // 0: Unstable 1: Stable
+	TareFlag           uint8
+	DualRage           uint8
+	WeightUnit         uint8
+	WeightDecimalPoint uint8
+	PriceDecimalPoint  uint8
+	Reserved           uint8
+	Tare               uint32
+	Weight             int32
+	UnitPrice          uint32
+	TotalPrice         uint32
+	PLUNumber          uint32
+	DepartmentNumber   uint16
+}
+
 func encodePacket(address uint32, opcode [2]byte, data []byte) []byte {
 	buf := make([]byte, 10)
 
@@ -176,6 +194,30 @@ func (c Cas) ErasePLU(scaleID uint32, departmentNumber uint16, PLUNumber uint32)
 	}
 
 	return nil
+}
+
+// GetStatus returns current scale state
+func (c Cas) GetStatus(scaleID uint32) (Status, error) {
+	var status Status
+
+	opcode := [2]byte{'R', 'N'}
+	buf := encodePacket(scaleID, opcode, []byte{})
+
+	if _, err := c.conn.Write(buf); err != nil {
+		return status, err
+	}
+
+	tmp := make([]byte, 512)
+
+	if _, err := c.conn.Read(tmp); err != nil {
+		return status, err
+	}
+
+	if tmp[0] != 'W' || tmp[1] != 'N' {
+		return status, fmt.Errorf("GetStatus %s %x", string(tmp[0:2]), tmp)
+	}
+
+	return status, nil
 }
 
 // Connect to scale
