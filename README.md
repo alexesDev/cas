@@ -1,7 +1,7 @@
 # Work in progress
 
 Базовый код для заливки данных о товаре в CAS CL5000J/CL3000. Сам
-протокол довольно просто и описан тут https://github.com/alexesDev/cas/blob/master/docs/protocol.pdf
+протокол довольно прост и описан тут https://github.com/alexesDev/cas/blob/master/docs/protocol.pdf
 
 Все написано на коленке, поэтому стоит использовать только на свой страх и
 риск. Из фишек, которые постараюсь реализовать в свободное время:
